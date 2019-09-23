@@ -116,7 +116,7 @@ function generarGrafoFlow(n::Int64,maxCapacidad::Int64,density::Float64)
   rand!(a,1:maxCapacidad)
   for i in 1:n
     for j in i+1:n
-      if rand()<(2*density) #números entre 0 y 1
+      if rand()>(2*density) #números entre 0 y 1
         a[i,j]=0
         a[j,i]=0
       else # aceptaremos flujo en un único sentido 
@@ -138,6 +138,7 @@ function maxFlow(g::grafoFlujos,origen::Int64,destino::Int64,s::Array{Int64,2})
   s=zeros(Int64,g.vertices,g.vertices)
   totalFlow=0
   residual=grafoCaminos(g.vertices,zeros(Int64,g.vertices,g.vertices))
+  println("capacidad inicial: ",g.capacidad)
   while true
     fill!(residual.longitud,g.vertices+2)
     for i in 1:g.vertices
@@ -150,8 +151,11 @@ function maxFlow(g::grafoFlujos,origen::Int64,destino::Int64,s::Array{Int64,2})
         end
       end
     end
+    println("residual: ",residual)
     longitud,traza=dj(residual,origen)
-    if longitud[destino]>(g.vertices+1)
+    println("Longitud: ",longitud)
+    println("traza: ",traza)
+    if longitud[destino]<(g.vertices+1)
       # tenemos camino aumentante
       current=destino
       flowExtra=10000000 # mala praxis
@@ -186,10 +190,12 @@ function maxFlow(g::grafoFlujos,origen::Int64,destino::Int64,s::Array{Int64,2})
   return totalFlow,s
 end
 
-unGrafo=generarGrafoFlow(25,100,0.25)
+unGrafo=generarGrafoFlow(25,100,0.4)
 
 solucion=Array{Int64}(unGrafo.vertices,unGrafo.vertices)
-maxFlow(unGrafo,1,25,solucion)
+flujo,solucion=maxFlow(unGrafo,1,25,solucion)
+println("flujo: ",flujo)
+println("Solución: ",solucion)
 #
 ##longitud,traza=djDense(unGrafo,1)
 ##println(unGrafo.arcos)
