@@ -1,9 +1,8 @@
 using DataStructures # -> definir una cola de prioridad
 
-
 #######################################################
 #
-# Funcionamiento del algoritmo de Bellman Ford
+# Funcionamiento de algoritmos de caminos mínimos
 #
 ######################################################
 
@@ -55,7 +54,6 @@ function bellmanFord(g::grafoCaminos,origen::Int64)
   return 0,l,tr
 end
 
-<<<<<<< HEAD
 # Algoritmo de Dijkstra
 #----------------------------------
 function dijkstra(grafo::grafoCaminos,origen::Int64)
@@ -101,7 +99,7 @@ end
 
 ######################################################
 #
-# Uso de Dijkstra en el algoritmo de Ford-Fulkerson
+# Uso de caminos en el algoritmo de Ford-Fulkerson
 #
 ######################################################
 
@@ -210,16 +208,21 @@ function fordFulkerson(g::grafoFlujos,origen::Int64,destino::Int64)
   return totalFlow,s
 end
 
-<<<<<<< HEAD
 #gFlujos=generarGrafoFlow(10,500,0.45)
-#fordFulkerson(gFlujos,1,10)
+#maxFlow=fordFulkerson(gFlujos,1,10)
+#println("maxFlow: ",maxFlow)
 
 #gEjemplo=grafoFlujos(7,[0 1 3 0 0 0 0 ; 0 0 0 5 4 0 0 ; 0 0 0 3 0 0 0 ; 0 0 0 0 0 0 2 ; 0 0 0 0 0 2 0 ; 0 0 0 0 0 0 3 ; 0 0 0 0 0 0 0],zeros(Int64,7,7))
 #maxFlow=fordFulkerson(gEjemplo,1,7)
 #println("maxFlow: ",maxFlow)
 
-# Vamos ahora a la versión de coste
-#----------------------------------
+######################################################
+#
+# Uso de caminos y flujos máximos para cálculo de flujo máximo a coste mínimo
+#
+######################################################
+
+
 type grafoMinCost
     grafoF::grafoFlujos
     coste::Array{Int64,2}  #coste[i,j] indica el coste de pasar una unidad de flujo por el arco
@@ -257,11 +260,12 @@ function generarGrafoMinCost(n::Int64,maxCapacidad::Int64,maxCost::Int64,density
   return grafoMinCost(grafoFlujos(n,a,b),c)
 end
 
+# Implementación
+#----------------------------------
 function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
-  # primer paso resolver maxflow
+  # primer paso. resolver maxflow
   maxFlow=fordFulkerson(g.grafoF,origen,destino)
-  println("maxFlow: ",maxFlow)
-  coste=0
+  coste=0 # determinamos su coste
   for i in 1:g.grafoF.vertices
     for j in 1:g.grafoF.vertices
       if g.grafoF.solucion[i,j]>0
@@ -269,9 +273,9 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
       end
     end
   end
-  println("coste inicial: ",coste)
-  # la idea ahora es la misma, pero usaremos Bellman Ford para detectar un ciclo en el grafo
-  residual=grafoCaminos(g.grafoF.vertices,zeros(Int64,g.grafoF.vertices,g.grafoF.vertices))
+  println("maxFlow: ",maxFlow,"\t","coste inicial: ",coste)
+  # la idea ahora es la misma que e flujos máximos, pero usamos Bellman Ford para detectar un ciclo de coste negativo en el grafo
+  residual=grafoCaminos(g.grafoF.vertices+1,zeros(Int64,g.grafoF.vertices+1,g.grafoF.vertices+1))
   while true
     #creo un grafo residual
     fill!(residual.longitud,10000000) # mala praxis con el infinito
@@ -287,6 +291,7 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
         end
       end
     end
+    println("residual: ",residual)
     #resuelvo Bellman-Ford
     conCircuito,longitud,traza=bellmanFord(residual,origen)
     println("conCircuito: ",conCircuito," ",traza)
@@ -318,6 +323,9 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
 
 end
 
-gMinCost=generarGrafoMinCost(10,10,100,0.45)
-coste=minCostMaxFlow(gMinCost,1,10)
+#gMinCost=generarGrafoMinCost(10,10,100,0.45)
+#coste=minCostMaxFlow(gMinCost,1,10)
 
+gMinCostEjemplo=grafoMinCost(grafoFlujos(4,[0 3 1 2; 0 0 1 0; 0 0 0 3; 0 0 0 0],zeros(Int64,4,4)),[0 10 12 80; 0 0 15 0; 0 0 0 20; 0 0 0 0])
+coste=minCostMaxFlow(gMinCostEjemplo,1,4)
+#println("coste final: ",coste)
