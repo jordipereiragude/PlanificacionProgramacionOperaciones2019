@@ -18,7 +18,7 @@ function generarGrafoCaminos(n::Int64,maxLongitud::Int64)
   return grafoCaminos(n,a)
 end
 
-# Muestra cómo funciona Bellman-Ford
+# Algoritmo de Bellman Ford
 #-----------------------------------
 function bellmanFord(g::grafoCaminos,origen::Int64)
   # paso 1
@@ -55,37 +55,70 @@ function bellmanFord(g::grafoCaminos,origen::Int64)
   return 0,l,tr
 end
 
-unGrafo=generarGrafoCaminos(25,10000)
-unGrafo.longitud[13,14]=1; unGrafo.longitud[14,15]=1; unGrafo.longitud[15,16]=1; unGrafo.longitud[17,16]=1000; unGrafo.longitud[17,13]=1; unGrafo.longitud[16,17]=(-10)
-conCircuito,longitud,traza=bellmanFord(unGrafo,1)
-println("traza: ",traza)
-# Si he encontrado un circuito, imprimirlo
-if conCircuito>0
-  println("conCircuito: ",conCircuito," ",traza[conCircuito])
-  w=traza[conCircuito]
-  while w != conCircuito
-    println(w," ",traza[w])
-    w=traza[w]
-  end
+# Algoritmo de Dijkstra
+#----------------------------------
+function dijkstra(grafo::grafoCaminos,origen::Int64)
+    ∞=1000000
+    tr=zeros(Int64,grafo.vertices)
+    l=Array{Int64}(grafo.vertices)
+    fill!(l,∞)
+    l[origen]=0
+    Q=PriorityQueue()
+    enqueue!(Q,origen,0)
+    while isempty(Q)==false
+        v=dequeue!(Q)
+        for w in 1:grafo.vertices
+            if l[w] > (l[v]+grafo.longitud[v,w])
+                l[w]=l[v]+grafo.longitud[v,w]
+                tr[w]=v
+                if haskey(Q,w)
+                    Q[w]=l[w]
+                else
+                    enqueue!(Q,w,l[w])
+                end
+            end
+            assert( l[w]>(0-∞))
+        end
+    end
+    return l,tr
 end
 
-#######################################################
+
+#unGrafo=generarGrafoCaminos(25,10000)
+#unGrafo.longitud[13,14]=1; unGrafo.longitud[14,15]=1; unGrafo.longitud[15,16]=1; unGrafo.longitud[17,16]=1000; unGrafo.longitud[17,13]=1; unGrafo.longitud[16,17]=(-10)
+#conCircuito,longitud,traza=bellmanFord(unGrafo,1)
+#println("traza: ",traza)
+## Si he encontrado un circuito, imprimirlo
+#if conCircuito>0
+#  println("conCircuito: ",conCircuito," ",traza[conCircuito])
+#  w=traza[conCircuito]
+#  while w != conCircuito
+#    println(w," ",traza[w])
+#    w=traza[w]
+#  end
+#end
+#longitud,traza=dijkstra(unGrafo,1) #si se descomenta salta la "assertion" de circuito negativo
+
+######################################################
 #
-# Uso de Bellman-Ford en el algoritmo de Ford-Fulkerson
+# Uso de Dijkstra en el algoritmo de Ford-Fulkerson
 #
 ######################################################
 
 type grafoFlujos
     vertices::Int64
-    capacidad::Array{Int64,2} #arco[i,j] indica la capacidad del arco
+    capacidad::Array{Int64,2} #capacidad[i,j] indica la capacidad del arco
+    solucion::Array{Int64,2}  #solucion[i,j] indica el flujo del arco
 end
 
 function generarGrafoFlow(n::Int64,maxCapacidad::Int64,density::Float64)
   a=Array{Int64}(n,n)
+  b=Array{Int64}(n,n)
   rand!(a,1:maxCapacidad)
   for i in 1:n
+    a[i,i]=0
     for j in i+1:n
-      if rand()<(2*density) #números entre 0 y 1
+      if rand()>(2*density) #números entre 0 y 1
         a[i,j]=0
         a[j,i]=0
       else
@@ -97,151 +130,191 @@ function generarGrafoFlow(n::Int64,maxCapacidad::Int64,density::Float64)
       end
     end
   end
-  return grafoFlujos(n,a)
+  return grafoFlujos(n,a,b)
 end
 
 
 # Implementación de Ford Fulkerson
 #---------------------------------
-function fordFulkerson(g::grafoFlujos,origen::Int64,destino::Int64,s::Array{Int64,2})
-  s=zeros(Int64,g.vertices,g.vertices)
+function fordFulkerson(g::grafoFlujos,origen::Int64,destino::Int64)
+  fill!(g.solucion,0) #limpiar la solución
   residual=grafoCaminos(g.vertices,zeros(Int64,g.vertices,g.vertices))
-  while true
-    residual.longitud=zeros(Int64,g.vertices,g.vertices)
+  obj=0
+  println("g.capacidad. ",g.capacidad)
+  while true 
+    #creo el grafo residual
+    fill!(residual.longitud,g.vertices+1)
     for i in 1:g.vertices
       for j in 1:g.vertices
         if g.capacidad[i,j]>0
-    break
+          if g.solucion[i,j]<g.capacidad[i,j]
+            residual.longitud[i,j]=1
+          end
+          if g.solucion[i,j]>0
+            residual.longitud[j,i]=1
+          end
+        end
+      end
+    end
+    #resuelvo Dijkstra
+    #println(residual)
+    longitud,traza=dijkstra(residual,origen)
+    println("longitud:",longitud[destino])
+    if longitud[destino]<g.vertices
+      extraFlow=10000000 # mala praxis
+      # primero tenemos que ver el flujo máximo que podemos pasar
+      c=destino
+      while true
+        print("arco entre: ",traza[c]," y ",c)
+        if g.capacidad[traza[c],c]>0
+          #estoy añadiendo flujo
+          extraFlow=min(extraFlow,g.capacidad[traza[c],c]-g.solucion[traza[c],c])
+          println(" capacidad ",g.capacidad[traza[c],c]-g.solucion[traza[c],c]," extra: ",extraFlow)
+        else
+          #esto eliminando flujo (redirección)
+          extraFlow=min(extraFlow,g.solucion[c,traza[c]])
+          println(" rr ",g.solucion[c,traza[c]]," extra: ",extraFlow)
+        end
+        c=traza[c]
+        if c==origen
+          break
+        end
+      end
+      # segundo tenemos que actualizar el flujo de los arcos según flujo máximo
+      c=destino
+      while true
+        print("cambio en arco ",traza[c],",",c)
+        if g.capacidad[traza[c],c]>0
+          g.solucion[traza[c],c] += extraFlow
+          println(" added ",extraFlow)
+          assert(g.solucion[traza[c],c]<=g.capacidad[traza[c],c])
+        else
+          g.solucion[c,traza[c]] -= extraFlow
+          println(" removed ",extraFlow)
+          assert(g.solucion[traza[c],c]>=0)
+        end
+        c=traza[c]
+        if c==origen
+          break
+        end
+      end
+      obj += extraFlow
+    else
+      #no podemos mejorar la solución
+      return obj
+    end
+    #println("solucion: ",g.solucion)
+    #println("================= fin un paso ================\n\n")
+    #z=read(STDIN, Char)
   end
 end
 
-unGrafo=generarGrafoFlow(25,100,0.25)
+#gFlujos=generarGrafoFlow(10,500,0.45)
+#fordFulkerson(gFlujos,1,10)
 
-solucion=Array{Int64}(unGrafo.vertices,unGrafo.vertices)
-fordFulkerson(unGrafo,1,25,solucion)
-#
-##longitud,traza=djDense(unGrafo,1)
-##println(unGrafo.arcos)
-##println(longitud)
-##println(traza)
-#
-#
-########################################################
-##
-## Grafo sparse
-##
-#######################################################
-#
-#type arco
-#    origen::Int64
-#    destino::Int64
-#    longitud::Int64
-#end
-#
-#type grafoSparse
-#    nVertices::Int64
-#    nArcos::Int64
-#    pOrigen::Array{Int64,1}
-#    arcos::Array{arco,1} #arco[i,j] indica la distancia entre i y j
-#end
-#
-#function djSparse(origen::Int64,g::grafoSparse)
-#    ∞=1000000
-#    π=zeros(Int64,g.nVertices)
-#    l=Array{Int64}(g.nVertices)
-#    fill!(l,∞)
-#    l[origen]=0
-#    Q=PriorityQueue()
-#    enqueue!(Q,origen,0)
-#    while isempty(Q)==false
-#        v=dequeue!(Q)
-#        for c in g.pOrigen[v]:g.pOrigen[v+1]-1
-#            w=g.arcos[c].destino
-#            longitud=g.arcos[c].longitud
-#            if l[w] > (l[v]+longitud)
-#                l[w]=l[v]+longitud
-#                π[w]=v
-#                if haskey(Q,w)
-#                    Q[w]=l[w]
-#                else
-#                    enqueue!(Q,w,l[w])
-#                end
-#            end
-#        end
-#    end
-#    return l,π
-#end
-#
-#function generarGrafoSparse(n::Int64,p::Float64,maxValue::Int64)
-#    a=arco[]
-#    pOrigen=Int64[]
-#    nArcos=1
-#    for i in 1:n
-#        push!(pOrigen,nArcos)
-#        for j in 1:n
-#            if i!=j
-#                if rand()<p
-#                    push!(a,arco(i,j,rand(1:maxValue)))
-#                    nArcos += 1
-#                end
-#            end
-#        end
-#    end
-#    push!(pOrigen,nArcos)
-#    return grafoSparse(n,nArcos-1,pOrigen,a)
-#end
-#
-#unGrafo=generarGrafoSparse(10,0.25,1000)
-#println(unGrafo.pOrigen)
-#println(unGrafo.arcos)
-#longitud,camino=djSparse(1,unGrafo)
-#println(longitud)
-#println(camino)
-#
-########################################################
-##
-## Programación Dinámica
-##
-#######################################################
-#
-#beneficio = [ 5, 3, 2, 7, 4 ]
-#peso = [ 2, 8, 4, 2, 5 ]
-#capacidad = 10
-#
-#function knapsack(b,p,c)
-#    T=size(p,1) #número de etapas
-#    tabla = OffsetArray(Int64, 0:c, 1:T) #las filas representan la capacidad ocupada, las columnas las decisiones
-#    #etapa 1
-#    for s=1:c
-#        tabla[s,1]=(-1) #valor negativo va a indicar que no es valor posible
-#    end
-#    tabla[0,1]=0
-#    tabla[p[1],1]=b[1]
-#    #etapas 2 a T
-#    #println(tabla[:,1]) #--> permitirá explicar el funcionamiento del algoritmo
-#    for t in 2:T
-#        for s=0:c
-#            tabla[s,t]=tabla[s,t-1]
-#        end
-#        for s=c-p[t]:-1:0 #este for va de c-p[t] hasta 0 reduciendo en 1 cada vez
-#            if tabla[s,t]>=0 #contiene un valor posible
-#                if tabla[s+p[t],t]<(tabla[s,t-1]+b[t]) #mejora la opción actual?
-#                    tabla[s+p[t],t]=tabla[s,t-1]+b[t]
-#                end
-#            end
-#        end
-#        #println(tabla[:,t]) #--> permitirá explicar el funcionamiento del algoritmo
-#    end
-#    beneficio=0
-#    maxLoad=0
-#    previous=0
-#    for s in 0:c
-#        if beneficio < tabla[s,T]
-#            beneficio=tabla[s,T]
-#        end
-#    end
-#    return beneficio
-#end
-#
-#beneficio=knapsack(beneficio,peso,capacidad)
-#println(beneficio)
+#gEjemplo=grafoFlujos(7,[0 1 3 0 0 0 0 ; 0 0 0 5 4 0 0 ; 0 0 0 3 0 0 0 ; 0 0 0 0 0 0 2 ; 0 0 0 0 0 2 0 ; 0 0 0 0 0 0 3 ; 0 0 0 0 0 0 0],zeros(Int64,7,7))
+#maxFlow=fordFulkerson(gEjemplo,1,7)
+#println("maxFlow: ",maxFlow)
+
+# Vamos ahora a la versión de coste
+#----------------------------------
+type grafoMinCost
+    grafoF::grafoFlujos
+    coste::Array{Int64,2}  #coste[i,j] indica el coste de pasar una unidad de flujo por el arco
+end
+
+function generarGrafoMinCost(n::Int64,maxCapacidad::Int64,maxCost::Int64,density::Float64)
+  a=Array{Int64}(n,n)
+  b=Array{Int64}(n,n)
+  c=Array{Int64}(n,n)
+  rand!(a,1:maxCapacidad)
+  for i in 1:n
+    a[i,i]=0
+    for j in i+1:n
+      if rand()>(2*density) #números entre 0 y 1
+        a[i,j]=0
+        a[j,i]=0
+      else
+        if rand()<0.5
+          a[i,j]=0
+        else
+          a[j,i]=0
+        end
+      end
+    end
+  end
+  for i in 1:n
+    for j in 1:n
+      if a[i,j]>0
+        c[i,j]=rand(1:maxCost)
+      else
+        c[i,j]=0
+      end
+    end
+  end
+  return grafoMinCost(grafoFlujos(n,a,b),c)
+end
+
+function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
+  # primer paso resolver maxflow
+  maxFlow=fordFulkerson(g.grafoF,origen,destino)
+  println("maxFlow: ",maxFlow)
+  coste=0
+  for i in 1:g.grafoF.vertices
+    for j in 1:g.grafoF.vertices
+      if g.grafoF.solucion[i,j]>0
+        coste += g.grafoF.solucion[i,j]*g.coste[i,j]
+      end
+    end
+  end
+  println("coste inicial: ",coste)
+  # la idea ahora es la misma, pero usaremos Bellman Ford para detectar un ciclo en el grafo
+  residual=grafoCaminos(g.grafoF.vertices,zeros(Int64,g.grafoF.vertices,g.grafoF.vertices))
+  while true
+    #creo un grafo residual
+    fill!(residual.longitud,10000000) # mala praxis con el infinito
+    for i in 1:g.grafoF.vertices
+      for j in 1:g.grafoF.vertices
+        if g.grafoF.capacidad[i,j]>0  #something wrong
+          if g.grafoF.solucion[i,j]<g.grafoF.capacidad[i,j]
+            residual.longitud[i,j]=g.coste[i,j]
+          end
+          if g.grafoF.solucion[i,j]>0
+            residual.longitud[j,i]=0-g.coste[i,j]
+          end
+        end
+      end
+    end
+    #resuelvo Bellman-Ford
+    conCircuito,longitud,traza=bellmanFord(residual,origen)
+    println("conCircuito: ",conCircuito," ",traza)
+    if conCircuito!=0
+      w=traza[conCircuito]
+      while w != conCircuito
+        if residual.longitud[traza[w],w]>0 #something wrong
+          c=g.grafoF.capacidad[traza[w],w]-g.grafoF.solucion[traza[w],w]
+        else
+          c=g.grafoF.capacidad[w,traza[w]]-g.grafoF.solucion[w,traza[w]]
+        end
+        println(w," ",traza[w]," -> ",residual.longitud[traza[w],w],"  ** ",c)
+        w=traza[w]
+      end
+
+      if residual.longitud[traza[w],w]>0
+        c=g.grafoF.capacidad[traza[w],w]-g.grafoF.solucion[traza[w],w]
+      else
+        c=g.grafoF.capacidad[w,traza[w]]-g.grafoF.solucion[w,traza[w]]
+      end
+      
+      println(w," ",traza[w]," -> ",residual.longitud[traza[w],w]," ",c)
+    else
+      return coste
+    end
+    println("saliendo")
+    return coste
+  end
+
+end
+
+gMinCost=generarGrafoMinCost(10,10,100,0.45)
+coste=minCostMaxFlow(gMinCost,1,10)
