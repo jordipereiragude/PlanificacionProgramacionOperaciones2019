@@ -55,6 +55,7 @@ function bellmanFord(g::grafoCaminos,origen::Int64)
   return 0,l,tr
 end
 
+<<<<<<< HEAD
 # Algoritmo de Dijkstra
 #----------------------------------
 function dijkstra(grafo::grafoCaminos,origen::Int64)
@@ -82,7 +83,6 @@ function dijkstra(grafo::grafoCaminos,origen::Int64)
     end
     return l,tr
 end
-
 
 #unGrafo=generarGrafoCaminos(25,10000)
 #unGrafo.longitud[13,14]=1; unGrafo.longitud[14,15]=1; unGrafo.longitud[15,16]=1; unGrafo.longitud[17,16]=1000; unGrafo.longitud[17,13]=1; unGrafo.longitud[16,17]=(-10)
@@ -121,7 +121,7 @@ function generarGrafoFlow(n::Int64,maxCapacidad::Int64,density::Float64)
       if rand()>(2*density) #números entre 0 y 1
         a[i,j]=0
         a[j,i]=0
-      else
+      else # aceptaremos flujo en un único sentido 
         if rand()<0.5
           a[i,j]=0
         else
@@ -207,8 +207,10 @@ function fordFulkerson(g::grafoFlujos,origen::Int64,destino::Int64)
     #println("================= fin un paso ================\n\n")
     #z=read(STDIN, Char)
   end
+  return totalFlow,s
 end
 
+<<<<<<< HEAD
 #gFlujos=generarGrafoFlow(10,500,0.45)
 #fordFulkerson(gFlujos,1,10)
 
@@ -318,3 +320,4 @@ end
 
 gMinCost=generarGrafoMinCost(10,10,100,0.45)
 coste=minCostMaxFlow(gMinCost,1,10)
+
