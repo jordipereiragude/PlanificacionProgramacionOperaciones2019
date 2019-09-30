@@ -21,13 +21,13 @@ end
 #-----------------------------------
 function bellmanFord(g::grafoCaminos,origen::Int64)
   # paso 1
-  ∞=1000000
+  ∞=typemax(Int32)
   tr=zeros(Int64,g.vertices)
   l=Array{Int64}(g.vertices)
   fill!(l,∞)
   l[origen]=0
   # paso 2 (recurrencia de programación dinámica)
-  for i = 1:g.vertices-1 #número de pasos
+  for i = 1:g.vertices-1 #número de arcos
     for v in 1:g.vertices
       for w in 1:g.vertices #dos loops para pasar por todos los arcos
         if l[w]> (l[v]+g.longitud[v,w])
@@ -37,7 +37,7 @@ function bellmanFord(g::grafoCaminos,origen::Int64)
       end
     end
   end
-  # paso 3 (búsqueda de una incompatibilidad que muestra la existencia de un circuito)
+  # paso 3 (búsqueda de  un circuito)
   for v in 1:g.vertices
     for w in 1:g.vertices #dos loops para pasar por todos los arcos
       if l[w] > (l[v]+g.longitud[v,w])
@@ -57,7 +57,7 @@ end
 # Algoritmo de Dijkstra
 #----------------------------------
 function dijkstra(grafo::grafoCaminos,origen::Int64)
-    ∞=1000000
+    ∞=typemax(Int32)
     tr=zeros(Int64,grafo.vertices)
     l=Array{Int64}(grafo.vertices)
     fill!(l,∞)
@@ -76,7 +76,7 @@ function dijkstra(grafo::grafoCaminos,origen::Int64)
                     enqueue!(Q,w,l[w])
                 end
             end
-            assert( l[w]>(0-∞))
+            assert(l[w]>(0-10000000)) #warning
         end
     end
     return l,tr
@@ -88,10 +88,10 @@ end
 #println("traza: ",traza)
 ## Si he encontrado un circuito, imprimirlo
 #if conCircuito>0
-#  println("conCircuito: ",conCircuito," ",traza[conCircuito])
+#  println("arco: (",conCircuito,",",traza[conCircuito],")")
 #  w=traza[conCircuito]
 #  while w != conCircuito
-#    println(w," ",traza[w])
+#    println("arco: (",w,",",traza[w],")")
 #    w=traza[w]
 #  end
 #end
@@ -159,7 +159,7 @@ function fordFulkerson(g::grafoFlujos,origen::Int64,destino::Int64)
     longitud,traza=dijkstra(residual,origen)
     println("longitud:",longitud[destino])
     if longitud[destino]<g.vertices
-      extraFlow=10000000 # mala praxis
+      extraFlow=typemax(Int64)
       # primero tenemos que ver el flujo máximo que podemos pasar
       c=destino
       while true
@@ -205,7 +205,7 @@ function fordFulkerson(g::grafoFlujos,origen::Int64,destino::Int64)
     #println("================= fin un paso ================\n\n")
     #z=read(STDIN, Char)
   end
-  return totalFlow,s
+  return totalFlow
 end
 
 #gFlujos=generarGrafoFlow(10,500,0.45)
@@ -278,7 +278,7 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
   residual=grafoCaminos(g.grafoF.vertices+1,zeros(Int64,g.grafoF.vertices+1,g.grafoF.vertices+1))
   while true
     #creo un grafo residual
-    fill!(residual.longitud,10000000) # mala praxis con el infinito
+    fill!(residual.longitud,typemax(Int32)) # mala praxis con el infinito
     for i in 1:g.grafoF.vertices
       for j in 1:g.grafoF.vertices
         if g.grafoF.capacidad[i,j]>0  #something wrong
@@ -297,7 +297,7 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
     println("conCircuito: ",conCircuito," ",traza)
     if conCircuito!=0
       # encontrar el circuito
-      cMin=10000000 # mala praxis con el infinito
+      cMin=typemax(Int32)
       w=traza[conCircuito]
       while w != conCircuito
         if residual.longitud[traza[w],w]>0 #arco que añade
@@ -316,8 +316,6 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
       end
       cMin=min(c,cMin)
       println(w," ",traza[w]," -> ",residual.longitud[traza[w],w]," -- ",c)
-
-
       # alterar el circuito
       w=traza[conCircuito]
       while w != conCircuito
