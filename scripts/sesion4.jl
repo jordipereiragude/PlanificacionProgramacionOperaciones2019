@@ -1,3 +1,5 @@
+# Estructuras de instancia y solución
+#------------------------------------
 type instance 
   nTareas::Int64
   duraciones::Array{Int64,1}
@@ -25,7 +27,6 @@ function leerArchivo(filename)
   i=nTareas+2
   precedencias=zeros(Int8,nTareas,nTareas)
   absPrecedencias=zeros(Int8,nTareas,nTareas)
-
 
   while true
     v=split(s[i],",")
@@ -129,6 +130,7 @@ function mejoraLocal(inst::instance,s::solucion)
   end
   println("earliest: ",earliest)
   println("latest: ",latest)
+  println("solución inicial: ",latest)
   #cambiar una tarea de estacion
   while true
     cambio=false
