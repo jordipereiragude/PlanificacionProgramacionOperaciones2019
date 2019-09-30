@@ -41,7 +41,7 @@ function bellmanFord(g::grafoCaminos,origen::Int64)
   for v in 1:g.vertices
     for w in 1:g.vertices #dos loops para pasar por todos los arcos
       if l[w] > (l[v]+g.longitud[v,w])
-        println("longitud: ",l[w]," vs ",l[v]+g.longitud[v,w]," y v: ",v," w: ",w)
+        #println("longitud: ",l[w]," vs ",l[v]+g.longitud[v,w]," y v: ",v," w: ",w)
         visited=zeros(Bool,g.vertices)
         while visited[w]==false
           visited[w]=true
@@ -296,36 +296,62 @@ function minCostMaxFlow(g::grafoMinCost,origen::Int64,destino::Int64)
     conCircuito,longitud,traza=bellmanFord(residual,origen)
     println("conCircuito: ",conCircuito," ",traza)
     if conCircuito!=0
+      # encontrar el circuito
+      cMin=10000000 # mala praxis con el infinito
       w=traza[conCircuito]
       while w != conCircuito
-        if residual.longitud[traza[w],w]>0 #something wrong
+        if residual.longitud[traza[w],w]>0 #arco que añade
           c=g.grafoF.capacidad[traza[w],w]-g.grafoF.solucion[traza[w],w]
-        else
-          c=g.grafoF.capacidad[w,traza[w]]-g.grafoF.solucion[w,traza[w]]
+        else # arco que reduce
+          c=g.grafoF.solucion[w,traza[w]] 
         end
+        cMin=min(c,cMin)
         println(w," ",traza[w]," -> ",residual.longitud[traza[w],w],"  ** ",c)
         w=traza[w]
       end
-
-      if residual.longitud[traza[w],w]>0
+      if residual.longitud[traza[w],w]>0 # arco que añade
         c=g.grafoF.capacidad[traza[w],w]-g.grafoF.solucion[traza[w],w]
-      else
-        c=g.grafoF.capacidad[w,traza[w]]-g.grafoF.solucion[w,traza[w]]
+      else # arco que reduce
+        c=g.grafoF.solucion[w,traza[w]]
       end
-      
-      println(w," ",traza[w]," -> ",residual.longitud[traza[w],w]," ",c)
+      cMin=min(c,cMin)
+      println(w," ",traza[w]," -> ",residual.longitud[traza[w],w]," -- ",c)
+
+
+      # alterar el circuito
+      w=traza[conCircuito]
+      while w != conCircuito
+        if residual.longitud[traza[w],w]>0
+          g.grafoF.solucion[traza[w],w] += cMin
+          assert(g.grafoF.solucion[traza[w],w]<=g.grafoF.capacidad[traza[w],w])
+          coste += cMin*g.coste[traza[w],w]
+        else
+          g.grafoF.solucion[w,traza[w]] -= cMin
+          assert(g.grafoF.solucion[w,traza[w]]<=g.grafoF.capacidad[w,traza[w]])
+          coste -= cMin*g.coste[w,traza[w]]
+        end
+        w=traza[w]
+      end
+      if residual.longitud[traza[w],w]>0
+        g.grafoF.solucion[traza[w],w] += cMin
+        assert(g.grafoF.solucion[traza[w],w]<=g.grafoF.capacidad[traza[w],w])
+        coste += cMin*g.coste[traza[w],w]
+      else # arco que reduce
+        g.grafoF.solucion[w,traza[w]] -= cMin
+        assert(g.grafoF.solucion[w,traza[w]]>=0)
+        coste -= cMin*g.coste[w,traza[w]]
+      end
+      println("coste: ",coste)
     else
       return coste
     end
-    println("saliendo")
-    return coste
   end
 
 end
 
-#gMinCost=generarGrafoMinCost(10,10,100,0.45)
-#coste=minCostMaxFlow(gMinCost,1,10)
+gMinCost=generarGrafoMinCost(10,10,100,0.45)
+coste=minCostMaxFlow(gMinCost,1,10)
 
-gMinCostEjemplo=grafoMinCost(grafoFlujos(4,[0 3 1 2; 0 0 1 0; 0 0 0 3; 0 0 0 0],zeros(Int64,4,4)),[0 10 12 80; 0 0 15 0; 0 0 0 20; 0 0 0 0])
-coste=minCostMaxFlow(gMinCostEjemplo,1,4)
+#gMinCostEjemplo=grafoMinCost(grafoFlujos(4,[0 3 2 0; 0 0 1 0; 0 0 0 2; 0 0 0 0],zeros(Int64,4,4)),[0 10 50 0; 0 0 30 0; 0 0 0 20; 0 0 0 0])
+#coste=minCostMaxFlow(gMinCostEjemplo,1,4)
 #println("coste final: ",coste)
